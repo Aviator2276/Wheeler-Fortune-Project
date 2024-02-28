@@ -1,61 +1,86 @@
 #include <AlfredoConnect.h>
 #include <Alfredo_NoU2.h>
 
-int encoderAPIN = 16;
-int encoderBPIN = 17;
+NoU_Motor wheelMotor(4);
+NoU_Motor relaySwitch(3);
 int buzzerButtonPIN = 25;
 
+const int encoderAPIN = 16;
+const int encoderBPIN = 17;
+volatile int encoderPosition = 0;
 
-//outcome = [0,-1,1,0,-1,0,0,1,1,0,0,-1,0,-1,1,0];
-//last_AB = 0b00;
-byte signalA;
-byte signalB;
-int encoderPosition;
-
+bool isRunning = false;
+bool lightsActivated = false;
 
 int buttonState;
 float throttle;
 
-NoU_Motor wheelMotor(4);
-NoU_Motor relaySwitch(3);
-float count;
-
 void setup() {
     Serial.begin(9600);
 
-    pinMode(buzzerButtonPIN, INPUT_PULLUP);
-    pinMode(encoderAPIN, INPUT);
-    pinMode(encoderBPIN, INPUT);
-    attachInterrupt(digitalPinToInterrupt(encoderAPIN),signalA_ISR,CHANGE);
-    attachInterrupt(digitalPinToInterrupt(encoderBPIN),signalB_ISR,CHANGE);
+    encoderPosition = 0;
 
+    pinMode(buzzerButtonPIN, INPUT_PULLUP);
+    attachInterrupt(digitalPinToInterrupt(encoderAPIN), ISR_A, CHANGE);
 
     RSL::initialize();
     RSL::setState(RSL_ENABLED);
 }
-
 void loop() {
     buttonState = digitalRead(buzzerButtonPIN);
-    signalA = digitalRead(encoderAPIN);
-    signalB = digitalRead(encoderBPIN);
-    throttle = 1;
 
-    if (!buttonState) {
-        wheelMotor.set(throttle);
-    } else {
-        wheelMotor.set(0);
+    if (!buttonState && !isRunning) {
+      runFunctions();
     }
-    Serial.println(signalA);
 
-    count = count + 0.00001;
+    Serial.println(encoderPosition);
     RSL::update();
-    delay(1);
 }
 
-void signalA_ISR() {
-  signalA = !signalA;
+void runFunctions() {
+  isRunning = true;
+  delay(3000);
+  spin();
+  delay(7000);
+  stop();
+  delay(20000);
+  reset();
 }
 
-void signalB_ISR() {
-  signalB = !signalB;
+
+void spin() {
+  throttle = 1;
+  wheelMotor.set(throttle);
+}
+
+void stop() {
+  for (float power = 1; power > 0; power = power - 0.02) {
+    wheelMotor.set(power);
+    delay(100);
+    if (power <= 0.2 && !lightsActivated) {
+      lights();
+    }
+  }
+  wheelMotor.set(0);
+}
+
+void lights() {
+  lightsActivated = true;
+  relaySwitch.set(1);
+}
+
+void reset() {
+  isRunning = false;
+  lightsActivated = false;
+  relaySwitch.set(0);
+  wheelMotor.set(0);
+}
+
+
+void ISR_A() {
+  if (digitalRead(encoderAPIN) == digitalRead(encoderBPIN)) {
+    encoderPosition++;
+  } else {
+    encoderPosition--;
+  }
 }
