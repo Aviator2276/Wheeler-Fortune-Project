@@ -1,2 +1,2 @@
-# Wheelers CTEA Door
- Code in Espruino and Arduino for Wheelers Wheel of Fortune CTAE Pathway Door.
+# Wheeler of Fortune Project Repository
+Code in available in Espruino and Arduion for the Wheeler of Fortune Project.
